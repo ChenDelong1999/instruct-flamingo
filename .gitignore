@@ -1,7 +1,16 @@
 *.pt
 *.json
 
-wandb/
+runs/*
+serving/*
+!serving/images/*
+wandb/*
+
+instruction_dataset/alpaca_cot_to_instruction.py
+instruction_dataset/mimic_it_to_instruction.ipynb
+instruction_dataset/pf1m_to_instruction.py
+
+predictions_validation/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
