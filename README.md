@@ -1,244 +1,259 @@
-# 🦩 OpenFlamingo
 
-[![PyPI version](https://badge.fury.io/py/open_flamingo.svg)](https://badge.fury.io/py/open_flamingo)
+<div align="center">
 
-Blog posts: [1](https://laion.ai/blog/open-flamingo/), [2](https://laion.ai/blog/open-flamingo-v2/) | Paper (coming soon) | [Demo](https://huggingface.co/spaces/openflamingo/OpenFlamingo)
+### Instruct-Flamingo🦩
+#### Codebase and Fondation Models for Fine-tuning Multi-modal LLMs
 
-Welcome to our open source implementation of DeepMind's [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)! 
+</div>
 
-In this repository, we provide a PyTorch implementation for training and evaluating OpenFlamingo models.
-If you have any questions, please feel free to open an issue. We also welcome contributions!
 
-# Table of Contents
-- [Installation](#installation)
-- [Approach](#approach)
-  * [Model architecture](#model-architecture)
-- [Usage](#usage)
-  * [Initializing an OpenFlamingo model](#initializing-an-openflamingo-model)
-  * [Generating text](#generating-text)
-- [Training](#training)
-  * [Dataset](#dataset)
-- [Evaluation](#evaluation)
-- [Future plans](#future-plans)
-- [Team](#team)
-- [Acknowledgments](#acknowledgments)
-- [Citing](#citing)
+> This repository aims to provide an easy-to-use codebase and visual instruction foundation models for (instruction-)fine-tuning upon [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) models. It is built upon [OpenFlamingo-v2](https://laion.ai/blog/open-flamingo-v2/), which is a powerful vision-language foundation model trained on massive interleaved image-text data. Our goal is to enhance its cross-modal representation alignment and instruction-following ability through visual instruction tuning. 
 
-# Installation
+Key features of this codebase include:
 
-To install the package in an existing environment, run 
+- **Data**: We use a unified input-output structure to format fine-tuning data. Unlike OpenFlamingo, which only supports [webdataset](https://github.com/webdataset/webdataset), our codebase allows fine-tuning data to be stored locally as `.json` files. Multiple datasets can be mixed using dataset configurations with specified sampling ratios. We also provide scripts for converting existing datasets into the `.json` format.
+
+- **Model**: We have added LoRA adapter to both the language model and cross-attention layers for efficient fine-tuning. In the near future, we will release a stronger visual instruction foundation model (Clever Flamingo v2), which has been extensively fine-tuned on a diverse collection of instruction datasets (both text-only and multi-modal).
+
+- **Training**: We have implemented multi-turn augmentation (see our [paper](https://arxiv.org/abs/2307.01003)) to boost training efficiency. We have also integrated TensorBoard logging and file logging for easier debugging.
+
+- **Inference**: We have wrapped the model into an `inferencer` and provided code for hosting a local API, hosting a Gradio web demo, and performing inference on instruction datasets.
+
+
+## Getting Started🚩
+
+### 1. Install Dependencies
+
+First, clone this repo:
+
+```bash
+git clone https://github.com/ChenDelong1999/instruct_flamingo.git
 ```
-pip install open-flamingo
-```
 
-or to create a conda environment for running OpenFlamingo, run
-```
+Our code is developed upon [OpenFlamingo](https://github.com/mlfoundations/open_flamingo), and therefore inherits its environment dependencies. One can use an OpenFlamingo environment to run our code, or create one by:
+
+```bash
 conda env create -f environment.yml
 ```
 
-# Approach
-OpenFlamingo is a multimodal language model that can be used for a variety of tasks. It is trained on a large multimodal dataset (e.g. Multimodal C4) and can be used to generate text conditioned on interleaved images/text. For example, OpenFlamingo can be used to generate a caption for an image, or to generate a question given an image and a text passage. The benefit of this approach is that we are able to rapidly adapt to new tasks using in-context learning.
+Note: please avoid using environment with pip installed `open-flamingo` package to avoid import conflicts.
 
-## Model architecture
-OpenFlamingo combines a pretrained vision encoder and a language model using cross attention layers. The model architecture is shown below.
+Additionally, as in our method LoRA adapter need to be inserted to the language model, a [PEFT](https://github.com/huggingface/peft) installation is required.
 
-![OpenFlamingo architecture](docs/flamingo.png) 
-Credit: [Flamingo](https://www.deepmind.com/blog/tackling-multiple-tasks-with-a-single-visual-language-model)
-
-# Usage
-## Initializing an OpenFlamingo model
-We support pretrained vision encoders from the [OpenCLIP](https://github.com/mlfoundations/open_clip) package, which includes OpenAI's pretrained models. 
-We also support pretrained language models from the `transformers` package, such as [MPT](https://huggingface.co/models?search=mosaicml%20mpt), [RedPajama](https://huggingface.co/models?search=redpajama), [LLaMA](https://huggingface.co/models?search=llama), [OPT](https://huggingface.co/models?search=opt), [GPT-Neo](https://huggingface.co/models?search=gpt-neo), [GPT-J](https://huggingface.co/models?search=gptj), and [Pythia](https://huggingface.co/models?search=pythia) models.
-
-``` python
-from open_flamingo import create_model_and_transforms
-
-model, image_processor, tokenizer = create_model_and_transforms(
-    clip_vision_encoder_path="ViT-L-14",
-    clip_vision_encoder_pretrained="openai",
-    lang_encoder_path="anas-awadalla/mpt-1b-redpajama-200b",
-    tokenizer_path="anas-awadalla/mpt-1b-redpajama-200b",
-    cross_attn_every_n_layers=1
-)
+```bash
+pip install peft
 ```
 
-## Released OpenFlamingo models
-We have trained the following OpenFlamingo models so far.
+The following packages are the dependencies of hosting API and gradio web demo:
 
-|# params|Language model|Vision encoder|Xattn interval*|COCO 4-shot CIDEr**|VQAv2 4-shot Accuracy**|Weights|
-|------------|--------------|--------------|----------|-----------|-------|----|
-|3B| mosaicml/mpt-1b-redpajama-200b | openai CLIP ViT-L/14 | 1 | 77.3 | 45.9 |[Link](https://huggingface.co/openflamingo/OpenFlamingo-3B-vitl-mpt1b)|
-|3B| mosaicml/mpt-1b-redpajama-200b-dolly | openai CLIP ViT-L/14 | 1 | 82.7 | 46.8 |[Link](https://huggingface.co/openflamingo/OpenFlamingo-3B-vitl-mpt1b-langinstruct)|
-|4B| togethercomputer/RedPajama-INCITE-Base-3B-v1 | openai CLIP ViT-L/14 | 2 | 81.8 | 48.1| [Link](https://huggingface.co/openflamingo/OpenFlamingo-4B-vitl-rpj3b)|
-|4B| togethercomputer/RedPajama-INCITE-Instruct-3B-v1 | openai CLIP ViT-L/14 | 2 | 85.8 | 49.1 | [Link](https://huggingface.co/openflamingo/OpenFlamingo-4B-vitl-rpj3b-langinstruct)|
-|9B| mosaicml/mpt-7b | openai CLIP ViT-L/14 | 4 | 89.0 | 50.5 | [Link](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b)|
-
-*\* Xattn interval refers to the `--cross_attn_every_n_layers` argument.*
-
-*\*\* 4-shot COCO and VQAv2 performances were calculated over a sample of 5000 test split examples, following the [Flamingo paper](https://arxiv.org/abs/2204.14198).*
-
-Note: as part of our v2 release, we have deprecated a previous LLaMA-based checkpoint. However, you can continue to use our older checkpoint using the new codebase.
-
-## Downloading pretrained weights
-
-To instantiate an OpenFlamingo model with one of our released weights, initialize the model as above and use the following code.
-
-```python
-# grab model checkpoint from huggingface hub
-from huggingface_hub import hf_hub_download
-import torch
-
-checkpoint_path = hf_hub_download("openflamingo/OpenFlamingo-3B-vitl-mpt1b", "checkpoint.pt")
-model.load_state_dict(torch.load(checkpoint_path), strict=False)
+```bash
+pip install gradio, uvicorn, fastapi, pydantic
 ```
 
-## Generating text
-Below is an example of generating text conditioned on interleaved images/text. In particular, let's try few-shot image captioning.
+### 2. Download Pretrained Weights
 
-``` python
-from PIL import Image
-import requests
-import torch
+- **OpenFlamingo Models**: see [here](https://github.com/mlfoundations/open_flamingo#released-openflamingo-models) for available flamingo base checkpoints, which consist the pretrained weights for perceiver resampler and inserted cross-attention layers.
+  - [OpenFlamingo9B-v1](https://huggingface.co/openflamingo/OpenFlamingo-9B): first version of OpenFlamingo, which is based on LLaMA and trained with 15M image-text sample. See blog [here](https://laion.ai/blog/open-flamingo/).
+  - [OpenFlamingo9B-v2](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b): MPT-7B based model, larger pretraining data thus better performance. See blog [here](https://laion.ai/blog/open-flamingo-v2/).
+- **Language Models**: we suggest to clone the huggingface model repo with LFS in advance.
+  - [LLaMA-7B](https://huggingface.co/decapoda-research/llama-7b-hf): base language model for OpenFlamingo9B-v1.
+  - [MPT-7B](https://huggingface.co/anas-awadalla/mpt-7b): base language model for OpenFlamingo9B-v2, with commercially useable license.
+- **Visual Instruction Foundation Models**: massively finetuned model could provide a better starting point for domain specific fine-tuining.
+  - [Clever Flamingo](https://huggingface.co/chendelong/clever_flamingo): from OpenFlamingo9B-v1, see [[paper](https://arxiv.org/abs/2307.01003), [github](https://github.com/ChenDelong1999/polite_flamingo)].
+  <!-- - [Clever Flamingo v2-preview](https://huggingface.co/chendelong/clever_flamingo_v2/blob/main/clever_flamingo_v2_preview.pt): from OpenFlamingo9B-v2, visual-instruction-tuned with more data (5M+ multi-modal/text-only instructions) using maximum 16 image per sample and 2k token context, training perceiver and LoRA (rank of 128) on LM and XATTN. This is a early stopped model (1M sample seen), but has already matched Clever Flamingo-v1 on image paragraph captioning dataset. It is uploaded only for checking code correctness. -->
+  - Clever Flamingo v2: comming soon...
 
-"""
-Step 1: Load images
-"""
-demo_image_one = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/val2017/000000039769.jpg", stream=True
-    ).raw
-)
+## Prepare Fine-tuning Dataset(s)📜
 
-demo_image_two = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/test-stuff2017/000000028137.jpg",
-        stream=True
-    ).raw
-)
+Training samples are expected to be provided by `.json` files, where each file has the following structure:
 
-query_image = Image.open(
-    requests.get(
-        "http://images.cocodataset.org/test-stuff2017/000000028352.jpg", 
-        stream=True
-    ).raw
-)
-
-
-"""
-Step 2: Preprocessing images
-Details: For OpenFlamingo, we expect the image to be a torch tensor of shape 
- batch_size x num_media x num_frames x channels x height x width. 
- In this case batch_size = 1, num_media = 3, num_frames = 1,
- channels = 3, height = 224, width = 224.
-"""
-vision_x = [image_processor(demo_image_one).unsqueeze(0), image_processor(demo_image_two).unsqueeze(0), image_processor(query_image).unsqueeze(0)]
-vision_x = torch.cat(vision_x, dim=0)
-vision_x = vision_x.unsqueeze(1).unsqueeze(0)
-
-"""
-Step 3: Preprocessing text
-Details: In the text we expect an <image> special token to indicate where an image is.
- We also expect an <|endofchunk|> special token to indicate the end of the text 
- portion associated with an image.
-"""
-tokenizer.padding_side = "left" # For generation padding tokens should be on the left
-lang_x = tokenizer(
-    ["<image>An image of two cats.<|endofchunk|><image>An image of a bathroom sink.<|endofchunk|><image>An image of"],
-    return_tensors="pt",
-)
-
-
-"""
-Step 4: Generate text
-"""
-generated_text = model.generate(
-    vision_x=vision_x,
-    lang_x=lang_x["input_ids"],
-    attention_mask=lang_x["attention_mask"],
-    max_new_tokens=20,
-    num_beams=3,
-)
-
-print("Generated text: ", tokenizer.decode(generated_text[0]))
+```json
+[
+  {
+    "input": "An Instruction or a question. Image path(s) (either absolute or relative) can be interleaved here as <img_path>path/to/the/image.png<img_path>, there can be more than one images: <img_path>path/to/the/second/image.png<img_path>",
+    "output": "Expected response or answer. The language modelling loss only operate on this part, and it contains text only."
+  },
+  {
+    "input": "This input-output format can be applied to many kinds of datasets, such as captioning ('input' filed can be leaved blank or as 'Describe this image'), VQA, multi-image reasoning, and also text-only instruction datasets.",
+    "output": "The output field must be not empty."
+  }
+]
 ```
 
-# Training
-We provide training scripts in `open_flamingo/train`. We provide an example Slurm script in `open_flamingo/scripts/run_train.py`, as well as the following example command:
-```
-torchrun --nnodes=1 --nproc_per_node=4 open_flamingo/train/train.py \
-  --lm_path anas-awadalla/mpt-1b-redpajama-200b \
-  --tokenizer_path anas-awadalla/mpt-1b-redpajama-200b \
-  --cross_attn_every_n_layers 1 \
-  --dataset_resampled \
-  --batch_size_mmc4 32 \
-  --batch_size_laion 64 \
-  --train_num_samples_mmc4 125000\
-  --train_num_samples_laion 250000 \
-  --loss_multiplier_laion 0.2 \
-  --workers=4 \
-  --run_name OpenFlamingo-3B-vitl-mpt1b \
-  --num_epochs 480 \
-  --warmup_steps  1875 \
-  --mmc4_textsim_threshold 0.24 \
-  --laion_shards "/path/to/shards/shard-{0000..0999}.tar" \
-  --mmc4_shards "/path/to/shards/shard-{0000..0999}.tar" \
-  --report_to_wandb
+In the `instruction_dataset` folder, we provide some scripts for converting existing datasets into this format.
+
+The path of this `.json` dataset can be fed into training by `--instruction_data='path/to/dataset.json'`. Additionally, multiple datasets can be mixed by creating a dataset config file, which structures as follows:
+
+```json
+[
+  {
+    "dataset_name": "llava-complex-reasoning-77k",
+    "json_path": "instruction_dataset/converted_datasets/llava/complex_reasoning_77k.json",
+    "img_dir": "",
+    "ratio": 77
+  },
+  {
+    "dataset_name": "sharegpt",
+    "json_path": "instruction_dataset/converted_datasets/sharegpt/sharegpt.json",
+    "img_dir": "",
+    "ratio": 45
+  }
+]
 ```
 
-*Note: The MPT-1B [base](https://huggingface.co/mosaicml/mpt-1b-redpajama-200b)  and [instruct](https://huggingface.co/mosaicml/mpt-1b-redpajama-200b-dolly) modeling code does not accept the `labels` kwarg or compute cross-entropy loss directly within `forward()`, as expected by our codebase. We suggest using a modified version of the MPT-1B models found [here](https://huggingface.co/anas-awadalla/mpt-1b-redpajama-200b) and [here](https://huggingface.co/anas-awadalla/mpt-1b-redpajama-200b-dolly).*
+Here `img_dir` is the path to image dictionary if image paths are provided as relative path. The `ratio` specifies the sampling ratio of each subsets. Using `--instruction_data='path/to/dataset_config.json'` to feed the config for training.
 
-For more details, see our [training README](https://github.com/mlfoundations/open_flamingo/tree/main/open_flamingo/train).
+**Notes on dataset sampling**: the following arguments of `instruction_tuning/train.py` controls how the dataset is sampled during training
+- `--train_num_samples`: how many samples are randomly sampled to form a single epoch training data. Set it to `-1` to disable dataset sampling and use all available data.
+- `--dataset_sampling_mode`: choices are `ratio` and `sqrt`. The `ratio` alternative sample training data according to the `ratio` field specified in dataset configs; the `sqrt` samnpling mode is introduced in the [InstructBLIP paper](https://arxiv.org/abs/2305.06500). 
+- `--multiturn_augmentation`: this is introduced in the [Polite Flamingo paper](https://arxiv.org/abs/2307.01003). As the text length of instructions are extreamly imbalanced, we randomly sample instructions from the dataset to fill up the `<PAD>` token as thus boost training efficiency. It also empower the model to have multi-image multi-turn conversation ability. Set `--multiturn_augmentation=0` to disable this augmentation.
+- `--max_img`: maximum number of images, sample with fewer images will be automatically pad with black image(s). When `--multiturn_augmentation`>0 is specified, when the total number of image reachers `--max_img`, the augmentation will be truncated (to avoid encouraging visual hallucination). OpenFlamingo models uses `--max_img=5` during pretraining.
+- `--max_length`: maximum number text token. Use smaller value when GPU memory is insufficient.
+- `--instruction_prompt_templete`: `guanaco` or `guanaco-no-prompt`. The following code shows how it format the prompt (the target output will be appended to the prompt):
+  ```python
+  def get_prompt_instruction(instruction, instruction_prompt_templete):
+    if instruction_prompt_templete == 'guanaco':
+      prompt = 'A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user\'s questions.\n'
+      prompt +=  f'### Human: {instruction}\n### Assistant: '
+      return prompt
+    elif instruction_prompt_templete == 'guanaco-no-prompt':
+      return f'### Human: {instruction}\n### Assistant: '
+  ```
 
+## Training🔥
 
-# Evaluation
-An example evaluation script is at `open_flamingo/scripts/run_eval.sh`. Please see our [evaluation README](https://github.com/mlfoundations/open_flamingo/tree/main/open_flamingo/eval) for more details.
+First, `tuning_config` should be specified. This config controls which group of parameters will have LoRA adapters, and which group of parameters will be unfreezed. In the following example (open_flamingo/instruction_tuning/tuning_config/lora+perceiver.json), LoRA adapter with a rank of 64 will be applied to MPT language models (not including cross-attention layers), and the perceiver resampler will be unfreezed.
 
-
-To run evaluations on OKVQA you will need to run the following command:
-```
-import nltk
-nltk.download('wordnet')
-```
-
-
-# Future plans
-- [ ] Add support for video input
-
-# Team
-
-OpenFlamingo is developed by:
-
-[Anas Awadalla*](https://anas-awadalla.streamlit.app/), [Irena Gao*](https://i-gao.github.io/), [Joshua Gardner](https://homes.cs.washington.edu/~jpgard/), [Jack Hessel](https://jmhessel.com/), [Yusuf Hanafy](https://www.linkedin.com/in/yusufhanafy/), [Wanrong Zhu](https://wanrong-zhu.com/), [Kalyani Marathe](https://sites.google.com/uw.edu/kalyanimarathe/home?authuser=0), [Yonatan Bitton](https://yonatanbitton.github.io/), [Samir Gadre](https://sagadre.github.io/), [Shiori Sagawa](https://cs.stanford.edu/~ssagawa/), [Jenia Jitsev](https://scholar.google.de/citations?user=p1FuAMkAAAAJ&hl=en), [Simon Kornblith](https://simonster.com/), [Pang Wei Koh](https://koh.pw/), [Gabriel Ilharco](https://gabrielilharco.com/), [Mitchell Wortsman](https://mitchellnw.github.io/), [Ludwig Schmidt](https://people.csail.mit.edu/ludwigs/).
-
-The team is primarily from the University of Washington, Stanford, AI2, UCSB, and Google.
-
-# Acknowledgments
-This code is based on Lucidrains' [flamingo implementation](https://github.com/lucidrains/flamingo-pytorch) and David Hansmair's [flamingo-mini repo](https://github.com/dhansmair/flamingo-mini). Thank you for making your code public! We also thank the [OpenCLIP](https://github.com/mlfoundations/open_clip) team as we use their data loading code and take inspiration from their library design.
-
-We would also like to thank [Jean-Baptiste Alayrac](https://www.jbalayrac.com) and [Antoine Miech](https://antoine77340.github.io) for their advice, [Rohan Taori](https://www.rohantaori.com/), [Nicholas Schiefer](https://nicholasschiefer.com/), [Deep Ganguli](https://hai.stanford.edu/people/deep-ganguli), [Thomas Liao](https://thomasliao.com/), [Tatsunori Hashimoto](https://thashim.github.io/), and [Nicholas Carlini](https://nicholas.carlini.com/) for their help with assessing the safety risks of our release, and to [Stability AI](https://stability.ai) for providing us with compute resources to train these models.
-
-# Citing
-If you found this repository useful, please consider citing:
-
-```
-@software{anas_awadalla_2023_7733589,
-  author = {Awadalla, Anas and Gao, Irena and Gardner, Joshua and Hessel, Jack and Hanafy, Yusuf and Zhu, Wanrong and Marathe, Kalyani and Bitton, Yonatan and Gadre, Samir and Jitsev, Jenia and Kornblith, Simon and Koh, Pang Wei and Ilharco, Gabriel and Wortsman, Mitchell and Schmidt, Ludwig},
-  title = {OpenFlamingo},
-  month        = mar,
-  year         = 2023,
-  publisher    = {Zenodo},
-  version      = {v0.1.1},
-  doi          = {10.5281/zenodo.7733589},
-  url          = {https://doi.org/10.5281/zenodo.7733589}
+```json
+{
+    "lora": true,
+    "from_pretrained": false,
+    "lora_target_modules": ["Wqkv", "out_proj", "up_proj", "down_proj"],
+    "lora_r": 64,
+    "lora_alpha": 64,
+    "lora_dropout": 0.0,
+    "unfrozen": ["perceiver"]
 }
 ```
 
+Set `"lora": false` to skip adding LoRA adapter to any model parameters. The `"from_pretrained"` field is only useful for Polite Flamingo and Clever Flamingo (v1) models, as they use [Guanaco QLoRA on LLaMA-7B](https://huggingface.co/timdettmers/guanaco-7b) as initialization.
+
+The following is an example of starting instruction tuning on OpenFlamingo-9B-v2, this setting comsumes 62GB memory on each GPU. One can lower the `--max_length` and `--batch_size`, or seting fewer parameters to be unfrozen in `--tuning_config` to save memory.
+
+```bash
+export PYTHONPATH="$PYTHONPATH:open_flamingo"
+CUDA_VISIBLE_DEVICES='0,1,2,3,4,5,6,7' torchrun --nnodes=1 --nproc_per_node=8 --master_port=29502 open_flamingo/instruction_tuning/train.py \
+    --instruction_data 'instruction_dataset/configs/datasets.json' \
+    --instruction_prompt_templete 'guanaco-no-prompt' \
+    --run_name 'runs/0709-clever_flamingo_v2-8x80g-2k_context' \
+    --seed 42 \
+    --vision_encoder_path 'ViT-L-14-336' \
+    --lm_path 'anas-awadalla/mpt-7b' \
+    --tokenizer_path 'anas-awadalla/mpt-7b' \
+    --freeze_lm_embeddings \
+    --tuning_config 'open_flamingo/instruction_tuning/tuning_config/lora[lm+xqttn]+perceiver.json' \
+    --resume_from_checkpoint '/path/to/cached/OpenFlamingo-9B-vitl-mpt7b.pt' \
+    --max_length 2048 \
+    --multiturn_augmentation 32 \
+    --max_img 16 \
+    --cross_attn_every_n_layers 4 \
+    --batch_size 2 \
+    --learning_rate 5e-5 \
+    --gradient_accumulation_steps 4 \
+    --precision 'bf16' \
+    --train_num_samples 100000 \
+    --workers 32 \
+    --num_epochs 100 \
+    --lr_scheduler constant \
+    --warmup_steps 1000 \
+    --logging_steps 500
 ```
-@article{Alayrac2022FlamingoAV,
-  title={Flamingo: a Visual Language Model for Few-Shot Learning},
-  author={Jean-Baptiste Alayrac and Jeff Donahue and Pauline Luc and Antoine Miech and Iain Barr and Yana Hasson and Karel Lenc and Arthur Mensch and Katie Millican and Malcolm Reynolds and Roman Ring and Eliza Rutherford and Serkan Cabi and Tengda Han and Zhitao Gong and Sina Samangooei and Marianne Monteiro and Jacob Menick and Sebastian Borgeaud and Andy Brock and Aida Nematzadeh and Sahand Sharifzadeh and Mikolaj Binkowski and Ricardo Barreira and Oriol Vinyals and Andrew Zisserman and Karen Simonyan},
-  journal={ArXiv},
-  year={2022},
-  volume={abs/2204.14198}
+
+The `--resume_from_checkpoint` specify the pretrained weights to load. Multiple checkpoints (e.g., when using visual instruction foundation model) can be concatenated with a seperation of `','`, and the model will load them one by one.
+
+## Inference🎈
+
+### Batch inference on dataset(s)
+
+The following script is an example of model inference through multiple datasets.
+
+```bash
+CUDA_VISIBLE_DEVICES='0' python open_flamingo/instruction_tuning/instruction_dataset_inference.py \
+    --lm_path "anas-awadalla/mpt-7b" \
+    --vision_encoder_path "ViT-L-14-336" \
+    --vision_encoder_pretrained "openai" \
+    --tuning_config 'open_flamingo/instruction_tuning/tuning_config/lora[lm+xqttn]+perceiver.json' \
+    --checkpoint_paths '/path/to/cached/OpenFlamingo-9B-vitl-mpt7b.pt,<YOUR FINE-TUNED MODEL CHECKPOINT>'  \
+    --cross_attn_every_n_layers 4 \
+    --instruction_path '<YOUR DATASET CONFIG JSON FILE>' \
+    --instruction_prompt_templete 'guanaco-no-prompt' \
+    --num_samples -1 \
+    --max_new_token 1024 \
+    --no_repeat_ngram_size 3 \
+    --num_beams 1 \
+    --seed 42 \
+    --results_dir "predictions_validation/"
+
+```
+
+### Hosting Local API and Web Demo
+
+We suggest to host a local API then host a local [gradio](https://www.gradio.app/) web demo, such that the front-end and back-end is seperated (easier to debug, since re-loading LLM is slow), and the local API could make model inference and evaluations much convinient. You can start an API server via the following command. Please see `api.py` and make necessary changes (e.g., model checkpoint caching path).
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uvicorn api:app --host=0.0.0.0 --port=1234 --log-level=info
+```
+
+This API can be called by the following code:
+
+```python
+import json, request
+
+url = '0.0.0.0:1234'
+content_lst = {
+    'prompt': '',     # add your prompt here,
+    'imgpaths': [],   # add your images here,
+    'args':{
+        'max_new_token':1024,
+        'num_beams':1,
+        'temperature':1.0,
+        'top_k':20,
+        'top_p':1,
+        'do_sample':True,
+        'length_penalty':1.0,
+        'no_repeat_ngram_size':3,
+    }
+}
+d = {"content_lst": content_lst,'typ': 'None'}
+d = json.dumps(d).encode('utf8')
+r = requests.post(url, data=d)
+js = json.loads(r.text)
+
+print(js['result']['response'])
+```
+
+Now you can start the gradio web demo, make sure you have checked the configrations in `gradio_demo.py`.
+
+```bash
+python gradio_demo.py
+```
+
+## Acknowledgements🙏
+
+This codebase is built upon [OpenFlamingo](https://github.com/mlfoundations/open_flamingo). Implementation of PEFT tuning config is inspired by [Multimodal-GPT](https://github.com/open-mmlab/Multimodal-GPT). Thanks for their wonderful works.
+
+
+This project is under active development, feel free to raise an issue if there are any bugs, we will try to fix them as soon as posible!
+
+We will release more visual instruction foundation model in the near future.
+
+If you find this project useful, please consider cite the following paper:
+
+```bibtex
+@article{chen2023visual,
+  title={Visual Instruction Tuning with Polite Flamingo},
+  author={Chen, Delong and Liu, Jianfeng and Dai, Wenliang and Wang, Baoyuan},
+  journal={arXiv preprint arXiv:2307.01003},
+  year={2023}
 }
 ```
