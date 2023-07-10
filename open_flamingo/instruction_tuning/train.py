@@ -4,7 +4,7 @@ import argparse
 import glob
 import os
 import random
-
+import logging
 import numpy as np
 import torch
 import wandb
@@ -12,10 +12,15 @@ from data import get_data
 from distributed import init_distributed_device, world_info_from_env
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.utils.tensorboard import SummaryWriter
 from train_utils import (
     train_one_epoch,
+    get_cast_dtype,
     get_mp_policy_dtype,
     save_checkpoint,
+    get_params_count_summary,
+    prepare_model_for_tuning,
+    resume_from_checkpoints
 )
 from transformers import (
     get_constant_schedule_with_warmup,
@@ -50,6 +55,21 @@ def random_seed(seed=42, rank=0):
 
 def main():
     parser = argparse.ArgumentParser()
+
+    # visual instruction tuning args
+    parser.add_argument(
+        "--instruction_data",
+        type=str,
+        help="path to instruction tuning data (Aplaca json format)",
+    )
+    parser.add_argument("--instruction_prompt_templete", type=str, default='guanaco')
+    parser.add_argument("--max_length", type=int, default=256)
+    parser.add_argument("--multiturn_augmentation", type=int, default=1)
+    parser.add_argument("--max_img", type=int, default=5)
+    parser.add_argument("--dataset_sampling_mode", type=str, default='ratio')
+    parser.add_argument("--continue_training", action="store_true")
+    parser.add_argument("--tuning_config", type=str, default='open_flamingo/instruction_tuning/tuning_config/lora.json')
+
     # model configuration args
     parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)
     parser.add_argument("--vision_encoder_pretrained", default="openai", type=str)
@@ -85,8 +105,7 @@ def main():
         action="store_true",
         help="delete previous checkpoint when saving new checkpoint",
     )
-    parser.add_argument("--batch_size_mmc4", type=int, default=128)
-    parser.add_argument("--batch_size_laion", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning_rate", default=1e-4, type=float)
@@ -128,38 +147,8 @@ def main():
     )
 
     # data args
-    parser.add_argument(
-        "--laion_shards",
-        type=str,
-        help="path to laion shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    )
-    parser.add_argument(
-        "--mmc4_shards",
-        type=str,
-        help="path to c4 shards, this should be a glob pattern such as /path/to/shards/shard-{0000..0999}.tar",
-    )
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--train_num_samples_mmc4", type=int, default=10000)
-    parser.add_argument("--train_num_samples_laion", type=int, default=10000)
-    parser.add_argument("--dataset_resampled", action="store_true")
-    parser.add_argument(
-        "--mmc4_textsim_threshold",
-        default=30,
-        type=float,
-        help="threshold for filtering images in mmc4 based on image-text similarity",
-    )
-    parser.add_argument(
-        "--mmc4_max_num_images",
-        default=6,
-        type=int,
-        help="max number of images per sequence in mmc4 / chatgpt",
-    )
-    parser.add_argument(
-        "--mmc4_min_num_images",
-        default=1,
-        type=int,
-        help="min number of images per sequence in mmc4 / chatgpt",
-    )
+    parser.add_argument("--train_num_samples", type=int, default=10000)
 
     # distributed training args
     parser.add_argument(
@@ -219,12 +208,6 @@ def main():
     args = parser.parse_args()
 
     # Validate args
-    if args.laion_shards.startswith("s3"):
-        args.laion_shards = f"pipe:aws s3 cp {args.laion_shards} -"
-
-    if args.mmc4_shards.startswith("s3"):
-        args.mmc4_shards = f"pipe:aws s3 cp {args.mmc4_shards} -"
-
     if args.save_checkpoints_to_wandb and not args.report_to_wandb:
         raise ValueError("save_checkpoints_to_wandb requires report_to_wandb")
 
@@ -244,10 +227,6 @@ def main():
             + "The main issue was the missing group kwarg on line 1596 in _all_gather_optim_state."
         )
 
-    assert (args.train_num_samples_laion // args.batch_size_laion) == (
-        args.train_num_samples_mmc4 // args.batch_size_mmc4
-    ), "number of samples per epoch must be equal for mmc4 and laion"
-
     # Set up distributed training
     if args.offline:
         os.environ["WANDB_MODE"] = "offline"
@@ -255,6 +234,15 @@ def main():
     args.local_rank, args.rank, args.world_size = world_info_from_env()
     device_id = init_distributed_device(args)
     random_seed(args.seed)
+
+    # Set up logging
+    if not os.path.exists(args.run_name):
+        os.makedirs(args.run_name, exist_ok=True)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+    logger = logging.getLogger(__name__)
+    file_handler = logging.FileHandler(os.path.join(args.run_name, 'train.log'))
+    file_handler.setFormatter(logging.Formatter('%(asctime)s [%(module)s:%(lineno)d] %(message)s'))
+    logger.addHandler(file_handler)
 
     # Initialize model
     model, image_processor, tokenizer = create_model_and_transforms(
@@ -267,6 +255,30 @@ def main():
         gradient_checkpointing=args.gradient_checkpointing,
         freeze_lm_embeddings=args.freeze_lm_embeddings,
     )
+
+    # TODO: add comments to explain loading checkpoints twice
+    logger.info('loading checkpoints before PEFT')
+    if args.resume_from_checkpoint is not None:
+        model, checkpoint, resume_from_epoch, message = resume_from_checkpoints(model, args.resume_from_checkpoint, args, logger)
+
+    model, config = prepare_model_for_tuning(model, args.tuning_config)
+
+    if (config['from_pretrained'] or config['lora']) and args.resume_from_checkpoint is not None:
+        logger.info('loading checkpoints after PEFT')
+        model, checkpoint, resume_from_epoch, message = resume_from_checkpoints(model, args.resume_from_checkpoint, args, logger)
+
+    if args.rank==0:
+        logger.info(get_params_count_summary(model))
+        logger.info('args')
+        for key, value in args.__dict__.items():
+            logger.info("\t{:<30}\t{}".format(key+":", value))
+        
+        logger.info('Tuning config')
+        logger.info(config)
+
+        logger.info('model.lang_encoder.config')
+        logger.info(model.lang_encoder.config)
+
     random_seed(args.seed, args.rank)
 
     # Initialize logging
@@ -278,34 +290,55 @@ def main():
             name=args.run_name,
             config=vars(args),
         )
+    if args.rank == 0:
+        os.makedirs(os.path.join(args.run_name, 'tensorboard'), exist_ok=True)
+        tensorboard_writer = SummaryWriter(os.path.join(args.run_name, 'tensorboard'))
+    else:
+        tensorboard_writer = None
+
 
     # Load model checkpoint on CPU
-    if os.path.exists(f"{args.run_name}") and args.resume_from_checkpoint is None:
-        # if args do not specify a checkpoint to resume from, check if checkpoints exist for this run
-        # and automatically resume from the latest checkpoint
-        checkpoint_list = glob.glob(f"{args.run_name}/checkpoint_*.pt")
-        if len(checkpoint_list) == 0:
-            print(f"Found no checkpoints for run {args.run_name}.")
-        else:
-            args.resume_from_checkpoint = sorted(
-                checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
-            )[-1]
-            print(
-                f"Found checkpoint {args.resume_from_checkpoint} for run {args.run_name}."
-            )
+    # if os.path.exists(f"{args.run_name}") and args.resume_from_checkpoint is None:
+    #     # if args do not specify a checkpoint to resume from, check if checkpoints exist for this run
+    #     # and automatically resume from the latest checkpoint
+    #     checkpoint_list = glob.glob(f"{args.run_name}/checkpoint_*.pt")
+    #     if len(checkpoint_list) == 0:
+    #         print(f"Found no checkpoints for run {args.run_name}.")
+    #     else:
+    #         args.resume_from_checkpoint = sorted(
+    #             checkpoint_list, key=lambda x: int(x.split("_")[-1].split(".")[0])
+    #         )[-1]
+    #         print(
+    #             f"Found checkpoint {args.resume_from_checkpoint} for run {args.run_name}."
+    #         )
+    # model, checkpoint, resume_from_epoch, message = resume_from_checkpoints(model, args.resume_from_checkpoint, args, logger)
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    # resume_from_epoch = 0
+    # if args.resume_from_checkpoint is not None:
+    #     if args.rank == 0:
+    #         print(f"Loading checkpoint from {args.resume_from_checkpoint}")
+    #     checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
+    #     msd = checkpoint["model_state_dict"]
+    #     msd = {k.replace("module.", ""): v for k, v in msd.items()}
 
-    resume_from_epoch = 0
-    if args.resume_from_checkpoint is not None:
-        if args.rank == 0:
-            print(f"Loading checkpoint from {args.resume_from_checkpoint}")
-        checkpoint = torch.load(args.resume_from_checkpoint, map_location="cpu")
-        msd = checkpoint["model_state_dict"]
-        msd = {k.replace("module.", ""): v for k, v in msd.items()}
-        resume_from_epoch = checkpoint["epoch"] + 1
-
-        # for fsdp, only one rank needs to load the state dict
-        if not args.fsdp or args.rank == 0:
-            model.load_state_dict(msd, False)
+    #     # for fsdp, only one rank needs to load the state dict
+    #     if not args.fsdp or args.rank == 0:
+    #         model.load_state_dict(msd, False)
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    # if args.resume_from_checkpoint is not None:
+    #     for this_checkpoint in args.resume_from_checkpoint.split(','):
+    #         if args.rank == 0:
+    #             logger.info(f"Loading checkpoint from {this_checkpoint}")
+    #         checkpoint = torch.load(this_checkpoint, map_location="cpu")
+    #         if args.continue_training:
+    #             resume_from_epoch = checkpoint["epoch"] + 1
+    #         msd = checkpoint["model_state_dict"] if "model_state_dict" in checkpoint.keys() else checkpoint
+    #         if 'module' not in list(msd.keys())[0]:
+    #             msd = {f"module.{k}": v for k, v in msd.items()}
+    #             logger.info('Adding "module." prefix to checkpoints')
+    #         # for fsdp, only one rank needs to load the state dict
+    #         if not args.fsdp or args.rank == 0:
+    #             model.load_state_dict(msd, False)
 
     # Initialize FSDP / DDP, and ensure the model is on GPU
     print(f"Initializing distributed training with {args.world_size} GPUs.")
@@ -362,6 +395,9 @@ def main():
         )
 
     else:
+        if args.precision != "fp32":
+            cast_dtype = get_cast_dtype(args.precision)
+            model = model.to(cast_dtype)
         model = model.to(device_id)
         ddp_model = DDP(model, device_ids=[device_id])
 
@@ -415,19 +451,18 @@ def main():
         )
 
     # load optimizer checkpoint
-    if args.resume_from_checkpoint is not None:
+    if args.resume_from_checkpoint is not None and "optimizer_state_dict" in checkpoint and args.continue_training:
         osd = checkpoint["optimizer_state_dict"]
         if args.fsdp:
             osd = FSDP.optim_state_dict_to_load(osd, ddp_model, optimizer)
         optimizer.load_state_dict(osd)
 
     # Initialize data loaders
-    laion_dataset = get_data(args, image_processor, tokenizer, "image_text")
-    mmc4_dataset = get_data(args, image_processor, tokenizer, "mmc4")
+    instruction_dataset = get_data(args, image_processor, tokenizer, logger=logger, epoch=0)
+    train_num_samples = len(instruction_dataset.dataloader.dataset) if args.train_num_samples==-1 else args.train_num_samples
     total_training_steps = (
-        (args.train_num_samples_mmc4) // (args.batch_size_mmc4 * args.world_size)
+        (train_num_samples) // (args.batch_size * args.world_size)
     ) * args.num_epochs
-
     if args.rank == 0:
         print(f"Total training steps: {total_training_steps}")
 
@@ -450,18 +485,13 @@ def main():
         )
 
     # load lr scheduler checkpoint
-    if args.resume_from_checkpoint is not None:
+    if args.resume_from_checkpoint is not None and "lr_scheduler_state_dict" in checkpoint and args.continue_training:
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
 
     # Start training!
     ddp_model.train()
 
     for epoch in range(resume_from_epoch, args.num_epochs):
-        laion_dataset.set_epoch(epoch)
-        laion_loader = laion_dataset.dataloader
-        mmc4_dataset.set_epoch(epoch)
-        mmc4_loader = mmc4_dataset.dataloader
-
         train_one_epoch(
             args=args,
             model=ddp_model,
@@ -469,9 +499,10 @@ def main():
             tokenizer=tokenizer,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
-            laion_loader=laion_loader,
-            mmc4_loader=mmc4_loader,
+            dataloader=instruction_dataset.dataloader,
+            logger=logger,    
             device_id=device_id,
+            tensorboard_writer=tensorboard_writer,
             wandb=wandb,
         )
         save_checkpoint(ddp_model, optimizer, lr_scheduler, epoch, args)
