@@ -139,6 +139,7 @@ class Flamingo(nn.Module):
         num_return_sequences=1,
         do_sample=False,
         early_stopping=False,
+        eos_token_id=None,
     ):
         """
         Generate text conditioned on vision and language inputs.
@@ -174,7 +175,7 @@ class Flamingo(nn.Module):
         output = self.lang_encoder.generate(
             input_ids=lang_x,
             attention_mask=attention_mask,
-            eos_token_id=self.eoc_token_id,
+            eos_token_id=self.eoc_token_id if eos_token_id is None else eos_token_id,
             num_beams=num_beams,
             min_new_tokens=min_new_tokens,
             max_new_tokens=max_new_tokens,
