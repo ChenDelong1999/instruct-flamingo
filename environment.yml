@@ -1,4 +1,4 @@
-name: openflamingo
+name: instruct_flamingo
 channels:
   - defaults
 dependencies:
