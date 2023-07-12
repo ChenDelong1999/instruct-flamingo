@@ -10,8 +10,6 @@ import pytz
 
 class InferencerAPI:
     def __init__(self, url):
-        # url = f"http://8.130.34.254:44400/clever_flamingo" # 公网IP:公网端口
-        # url = f"http://172.31.0.140:44400/clever_flamingo" # 私网IP地址:私网端口 (host4)
         self.url = url
 
     def __call__(self, 
@@ -47,7 +45,7 @@ class InferencerAPI:
             d = json.dumps(d).encode('utf8')
             try:
                 r = requests.post(self.url, data=d, timeout=60)
-                return json.loads(r.text)['result']['response']
+                return json.loads(r.text)['result']['response'][0]
             except requests.exceptions.ReadTimeout:
                 print('request timeout')
                 return '[Clever Flamingo]: Sorry, timeout (60s) due to server overload, please try again.' 
@@ -57,9 +55,9 @@ class InferencerAPI:
 
 
 
-TEMPLATE = 'A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user\'s questions.'
+# TEMPLATE = 'A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user\'s questions.'
+TEMPLATE = ''
 response_split = "### Assistant:"
-
 
 class PromptGenerator:
 
@@ -369,11 +367,12 @@ def build_conversation_demo(title_markdown, note_markdown):
     return demo
 
 
+
 if __name__ == "__main__":
     
     title_markdown = (f"""
 <div align="center">
-                      
+
 ## Clever Flamingo: a Multi-modal LLM-based Chatbot
 
 [Delong Chen (陈德龙)](https://chendelong.world/),&nbsp;&nbsp;&nbsp;[Jianfeng Liu (刘剑锋)](https://www.linkedin.com/in/jianfeng-liu-9539897b/),&nbsp;&nbsp;&nbsp;[Wenliang Dai (戴文亮)](https://wenliangdai.github.io/),&nbsp;&nbsp;&nbsp;[Baoyuan Wang (王宝元)](https://sites.google.com/site/zjuwby/)
@@ -404,13 +403,13 @@ This demo is a research preview for non-commercial use only. It only provides li
     #     v1=True
     # )
 
-    # log_dir = '/cpfs/user/chendelong/open_flamingo_v2/serving/demo_logs/'
-    # inferencer = InferencerAPI(url='http://0.0.0.0:44406/clever_flamingo')
-    # PORT = 44407
-
     log_dir = '/cpfs/user/chendelong/open_flamingo_v2/serving/demo_logs/'
-    inferencer = InferencerAPI(url='http://0.0.0.0:44406/clever_flamingo')
-    PORT = 800
+    inferencer = InferencerAPI(url='http://0.0.0.0:44400/clever_flamingo')
+    PORT = 80
+
+    # log_dir = '/cpfs/user/chendelong/open_flamingo_v2/serving/demo_logs/'
+    # inferencer = InferencerAPI(url='http://0.0.0.0:44410/clever_flamingo')
+    # PORT = 800
 
     IP = "0.0.0.0"
     os.environ["GRADIO_TEMP_DIR"] = '/cpfs/user/chendelong/open_flamingo_v2/serving/GRADIO_TEMP_DIR'

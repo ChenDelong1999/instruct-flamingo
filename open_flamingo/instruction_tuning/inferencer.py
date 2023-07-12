@@ -62,36 +62,48 @@ class Inferencer:
         self.tokenizer = tokenizer
 
     def __call__(self, 
-            prompt, 
-            images, 
-            max_new_token=1024, 
-            num_beams=3, 
-            temperature=1.0,
-            top_k=20, 
-            top_p=0.9, 
-            do_sample=True, 
-            length_penalty=1.0, 
-            no_repeat_ngram_size=3,
-            response_split = "### Assistant:"
-            ):
-        if type(prompt) == str:
-            prompt = self.tokenizer([prompt], return_tensors="pt")
+        prompt, 
+        images, 
+        max_new_token=1024, 
+        num_beams=3, 
+        temperature=1.0,
+        top_k=20, 
+        top_p=0.9, 
+        do_sample=True, 
+        length_penalty=1.0, 
+        no_repeat_ngram_size=3,
+        response_split="### Assistant:"
+    ):
+        # Ensure prompts is a list
+        if isinstance(prompt, str):
+            prompt = [prompt]
 
-        if len(images)==0 or type(images[0]) == str:
-            if len(images) == 0 or images is None:
-                images = [(Image.new('RGB', (224, 224), color='black'))]
+        # Ensure images is a two-dimensional list
+        if len(images) == 0 or isinstance(images[0], str):
+            images = [images]
+
+        # Convert prompts to input tensors
+        prompt = self.tokenizer(prompt, return_tensors="pt")
+
+        # Load and preprocess images
+        processed_images = []
+        for image_paths in images:
+            if len(image_paths) == 0:
+                image_paths = [Image.new('RGB', (224, 224), color='black')]
             else:
-                images = (Image.open(fp) for fp in images)
-            vision_x = [self.image_processor(im).unsqueeze(0) for im in images]
-            vision_x = torch.cat(vision_x, dim=0)
-        else:
-            vision_x = images
+                image_paths = [Image.open(fp) for fp in image_paths]
 
-        vision_x = vision_x.unsqueeze(1).unsqueeze(0).half()
+            vision_x = [self.image_processor(im).unsqueeze(0).unsqueeze(0) for im in image_paths] # Add an extra dimension for T_img
+            vision_x = torch.cat(vision_x, dim=0) # Concatenate along the T_img dimension
+            processed_images.append(vision_x)
+
+        vision_x = torch.stack(processed_images).half().cuda() 
+
+        # Generate output
         with torch.no_grad():
             if self.v1:
                 output_ids = self.model.generate(
-                    vision_x=vision_x.cuda(),
+                    vision_x=vision_x,
                     lang_x=prompt["input_ids"].cuda(),
                     attention_mask=prompt["attention_mask"].cuda(),
                     max_new_tokens=max_new_token,
@@ -102,10 +114,10 @@ class Inferencer:
                     do_sample=do_sample,
                     length_penalty=length_penalty,
                     no_repeat_ngram_size=no_repeat_ngram_size,
-                )[0]
+                )
             else:
                 output_ids = self.model.generate(
-                    vision_x=vision_x.cuda(),
+                    vision_x=vision_x,
                     lang_x=prompt["input_ids"].cuda(),
                     attention_mask=prompt["attention_mask"].cuda(),
                     max_new_tokens=max_new_token,
@@ -117,12 +129,18 @@ class Inferencer:
                     length_penalty=length_penalty,
                     no_repeat_ngram_size=no_repeat_ngram_size,
                     eos_token_id=self.tokenizer.eos_token_id
-                )[0]
+                )
+
+        # Decode and print the generated texts
+        generated_texts = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+        results = []
+        for text in generated_texts:
+            print(text)
+            result = text.split(response_split)[-1].strip()
+            results.append(result)
             
-        generated_text = self.tokenizer.decode(
-            output_ids, skip_special_tokens=True)
-        result = generated_text.split(response_split)[-1].strip()
-        return result, generated_text
+        return results, generated_texts
+
 
 if __name__=='__main__':
     pass
