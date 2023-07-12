@@ -34,17 +34,16 @@ def convert_mscoco_to_instruction(input_file, output_file, img_directory):
             "Using language, provide a short account of the image.",
             "Use a few words to illustrate what is happening in the picture.",
         ])
-        
-        caption = max(captions, key=len).strip().capitalize()
-
-        if caption[-1] not in ['.', '?', '!']:
-            caption += '.'
-        converted_item = {
-            "instruction": instruction,
-            "input": f"<img_path>/cpfs/user/chendelong/downloads/mscoco_2017/{image_file}<img_path>",
-            "output": caption,
-        }
-        converted_data.append(converted_item)
+        # caption = max(captions, key=len).strip().capitalize()
+        for caption in captions:
+            caption = caption.strip().capitalize()
+            if caption[-1] not in ['.', '?', '!']:
+                caption += '.'
+            converted_item = {
+                "input": f"{instruction}<img_path>/cpfs/user/chendelong/downloads/mscoco_2017/{image_file}<img_path>",
+                "output": caption,
+            }
+            converted_data.append(converted_item)
     print(len(converted_data))
 
     random.shuffle(converted_data)

@@ -9,6 +9,17 @@ import matplotlib.pyplot as plt
 alpaca_cot_dir = '/cpfs/shared/research-llm/instruc_data_en/language_only_instruct_tuning/Alpaca-CoT'
 
 file_list = [
+    
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/aqua_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/creak_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/ecqa_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/esnli_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/gsm8k_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/qasc_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/qed_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/sensemaking_train.json',
+    f'{alpaca_cot_dir}/Chain-of-Thought/formatted_cot_data/strategyqa_train.json',
+    
     f'{alpaca_cot_dir}/FLAN-Muffin/flan.json',
 
     f'{alpaca_cot_dir}/GPT4all/gpt4all_without_p3.json',
@@ -27,11 +38,11 @@ file_list = [
 
     f'{alpaca_cot_dir}/Guanaco/GuanacoDataset.json',
 
-    f'{alpaca_cot_dir}/hh-rlhf/harmless-base_chosen.json',
-    f'{alpaca_cot_dir}/hh-rlhf/helpful-online_chosen.json',
+    # f'{alpaca_cot_dir}/hh-rlhf/harmless-base_chosen.json',
+    # f'{alpaca_cot_dir}/hh-rlhf/helpful-online_chosen.json',
 
 
-    f'{alpaca_cot_dir}/gpt4tools/gpt4tools.json',
+    # f'{alpaca_cot_dir}/gpt4tools/gpt4tools.json',
 
     f'{alpaca_cot_dir}/instinwild/instinwild_en.json',
     f'{alpaca_cot_dir}/instinwild/instinwild_ch.json',
@@ -41,10 +52,11 @@ file_list = [
     f'{alpaca_cot_dir}/alpacaGPT4/alpaca_gpt4_data_zh.json',
 
     f'{alpaca_cot_dir}/OIG/grade_school_math_instructions.json',
-    f'{alpaca_cot_dir}/OIG/plot_screenplay_books_dialog.json',
-    f'{alpaca_cot_dir}/OIG/poetry_2_song.json',
+    # f'{alpaca_cot_dir}/OIG/plot_screenplay_books_dialog.json',
+    # f'{alpaca_cot_dir}/OIG/poetry_2_song.json',
 
     f'{alpaca_cot_dir}/GPTeacher/Toolformer/formatted_toolformer-dedupe-only-dataset.json',
+
     f'{alpaca_cot_dir}/CodeAlpaca/code_alpaca.json',
 
     f'{alpaca_cot_dir}/dolly/dolly.json',

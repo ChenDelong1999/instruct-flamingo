@@ -36,24 +36,18 @@ def process_textcaps_data(input_path, output_path, save_file_name):
     ]
 
     for item in tqdm.tqdm(input_data['data']):
-        # print(item.keys())
-        # print(item)
-        # for key in item.keys():
-        #     print(key, item[key])
         random_instruction = choice(instructions)
         img_path = "<img_path>/cpfs/user/chendelong/instruction_tuning_dataset/TextCaps/" + item['image_path'] + "<img_path>"
-        # print(item)
-        # output = '\n '.join(item['reference_strs'])
 
-        caption = max(item['reference_strs'], key=len).strip().capitalize()
-        if caption[-1] not in ['.', '?', '!']:
-            caption += '.'
+        for caption in item['reference_strs']:
+            # caption = max(item['reference_strs'], key=len).strip().capitalize()
+            if caption[-1] not in ['.', '?', '!']:
+                caption += '.'
 
-        textcaps_output.append({
-            # "instruction": random_instruction,
-            "input": random_instruction + ' ' + img_path,
-            "output": caption
-        })
+            textcaps_output.append({
+                "input": random_instruction + ' ' + img_path,
+                "output": caption.strip().capitalize()
+            })
 
     os.makedirs(output_path, exist_ok=True)
     write_json_file(os.path.join(output_path, save_file_name), textcaps_output)
