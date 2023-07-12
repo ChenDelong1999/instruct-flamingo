@@ -236,11 +236,12 @@ class InstructionDataset(Dataset):
             for i, config in enumerate(self.configs):
                 logger.info(f"Dataset [{i + 1}/{len(self.configs)}]: {config['dataset_name']}")
                 logger.info(f"\tConfig Sampling Ratio: [{config['ratio']}]")
-                logger.info(f"\tImage directory: {config['img_dir']}")
-                logger.info(f"\tNum samples: {total_samples_per_dataset[i]} ({total_samples_per_dataset[i]/total_samples*100:.2f}%)")
+                # logger.info(f"\tImage directory: {config['img_dir']}")
+                logger.info(f"\tNum samples (total available): {total_samples_per_dataset[i]} ({total_samples_per_dataset[i]/total_samples*100:.2f}%)")
                 if self.num_samples > 0:
                     logger.info(f"\tNum samples (after sampling):  {sampled_counts[i]} ({normalized_weights[i]*100:.2f}%)")
-                logger.info(f"\tNum over-length samples:       {over_length_counts[i] if i in over_length_counts.keys() else 0}")
+                if not args.skip_check_overlength:
+                    logger.info(f"\tNum over-length samples:       {over_length_counts[i] if i in over_length_counts.keys() else 0}")
 
         # Create and cache a zero-filled image for padding
         self.zero_image = torch.zeros_like(self.image_processor(Image.new('RGB', (224, 224))))
