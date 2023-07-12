@@ -68,7 +68,9 @@ def main():
     parser.add_argument("--max_img", type=int, default=5)
     parser.add_argument("--dataset_sampling_mode", type=str, default='ratio')
     parser.add_argument("--continue_training", action="store_true")
+    parser.add_argument("--skip_check_overlength", action="store_true")
     parser.add_argument("--tuning_config", type=str, default='open_flamingo/instruction_tuning/tuning_config/lora.json')
+    parser.add_argument("--epoch_num_samples", type=int, default=-1)
 
     # model configuration args
     parser.add_argument("--vision_encoder_path", default="ViT-L-14", type=str)

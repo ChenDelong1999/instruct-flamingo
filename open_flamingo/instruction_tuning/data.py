@@ -46,7 +46,8 @@ def get_prompt_instruction(instruction, instruction_prompt_templete):
 def extract_path_and_convert_token(input_data, img_dir):
     img_path_pattern = re.compile(r'<img_path>(.*?)<img_path>')
     img_paths = [os.path.join(img_dir, path) for path in img_path_pattern.findall(input_data)]
-    input_data_converted = img_path_pattern.sub('<image><|endofchunk|>', input_data)
+    input_data_converted = img_path_pattern.sub('<image>', input_data)
+    # input_data_converted = img_path_pattern.sub('<image><|endofchunk|>', input_data)
     return input_data_converted, img_paths
 
 
@@ -119,6 +120,9 @@ class InstructionDataset(Dataset):
 
         self.instruction_prompt_templete = args.instruction_prompt_templete
         self.num_samples = num_samples
+        self.epoch_num_samples = args.epoch_num_samples
+
+        assert self.epoch_num_samples <= self.num_samples
 
         self.max_length = max_length
         if self.mode == 'train':
@@ -197,20 +201,22 @@ class InstructionDataset(Dataset):
                 sample["dataset_idx"] = i
                 sample["dataset_name"] = dataset_name
                 if self.mode == 'train':
-                    instruction_converted, _ = extract_path_and_convert_token(sample["input"], img_dir)
-                    input_tokenized_length = len(self.tokenizer(get_prompt_instruction(
-                        instruction_converted, 
-                        self.instruction_prompt_templete
-                        ))["input_ids"])
-                    sample["tokenized_length"] = input_tokenized_length
-                    if input_tokenized_length < max_length and sample["output"] not in ["", " ", "  ", "\n"]:
+                    if args.skip_check_overlength:
                         self.samples.append(sample)
                     else:
-                        # append a random sample to make sure len(samples)=num_samples
-                        # FIXME: index error when self.samples is empty (when the first sample is over-length)
-                        random_sample = random.choice(self.samples)
-                        self.samples.append(random_sample)
-                        over_length_counts[i] += 1
+                        instruction_converted, _ = extract_path_and_convert_token(sample["input"], img_dir)
+                        input_tokenized_length = len(self.tokenizer(get_prompt_instruction(
+                            instruction_converted, 
+                            self.instruction_prompt_templete
+                            ))["input_ids"])
+                        if input_tokenized_length < max_length and sample["output"] not in ["", " ", "  ", "\n"]:
+                            self.samples.append(sample)
+                        else:
+                            # append a random sample to make sure len(samples)=num_samples
+                            # FIXME: index error when self.samples is empty (when the first sample is over-length)
+                            random_sample = random.choice(self.samples)
+                            self.samples.append(random_sample)
+                            over_length_counts[i] += 1
                 else:
                     self.samples.append(sample)
                 
@@ -246,6 +252,8 @@ class InstructionDataset(Dataset):
     def __len__(self):
         if self.num_samples==-1:
             return len(self.samples)
+        elif self.epoch_num_samples > 0:
+            return self.epoch_num_samples
         else:
             return self.num_samples
     
@@ -301,7 +309,7 @@ class InstructionDataset(Dataset):
             return images, text, target_mask, torch.tensor(dataset_idxs[:self.multiturn_augmentation], dtype=torch.long)
         
         elif self.mode == 'test':
-            instruction_str = get_prompt_instruction(instructions[0], self.instruction_prompt_templete, target=targets[0])
+            instruction_str = get_prompt_instruction(instructions[0], self.instruction_prompt_templete)
             text = self.tokenizer(
                 instruction_str,
                 return_tensors="pt",

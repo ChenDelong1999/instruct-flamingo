@@ -96,7 +96,9 @@ def train_one_epoch(
         images, text, target_mask, dataset_idxs_batch  = batch
         images = images.to(device_id, dtype=cast_dtype, non_blocking=True).unsqueeze(2)
         input_ids = torch.stack([x for x in text['input_ids']]).squeeze(1).to(device_id)
-        attention_mask = torch.stack([x for x in text['attention_mask']]).squeeze(1).to(device_id)        
+        attention_mask = torch.stack([x for x in text['attention_mask']]).squeeze(1).to(device_id)
+        # change attention mask type to bool
+        attention_mask = attention_mask.type(torch.bool)       
 
         # set up labels; language model is expected to handle shifting
         labels = input_ids.clone()
