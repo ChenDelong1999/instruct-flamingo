@@ -14,7 +14,6 @@ subsets = [
     # 'LA/LADD_instructions',
 ]
 
-max_images = 4
 os.makedirs('converted_datasets/mimic_it', exist_ok=True)
 
 def random_select_with_order(lst, n):
@@ -45,6 +44,10 @@ for subset in subsets:
         instruction = sample['instruction']
         image_ids = sample['image_ids']
         
+        if 'TVC' in subset:
+            max_images = 8
+        else:
+            max_images = 4
         if len(image_ids) > max_images:
             image_ids = random_select_with_order(image_ids, max_images)
 
@@ -75,8 +78,6 @@ for subset in subsets:
                     break
             if contains_broken_image:
                 continue
-                    
-
 
         converted_sample = {
             'input': instruction,
