@@ -1,15 +1,15 @@
 
 <div align="center">
 
-### Instruct-Flamingo🦩
+<img src="docs/flamingo.png" alt="Logo" width="100">
+
+### Instruct-Flamingo
 #### Codebase and Fondation Models for Fine-tuning Multi-modal LLMs
 
 </div>
 
 
-> This repository aims to provide an easy-to-use codebase and visual instruction foundation models for (instruction-)fine-tuning upon [OpenFlamingo](https://github.com/mlfoundations/open_flamingo) models. It is built upon [OpenFlamingo-v2](https://laion.ai/blog/open-flamingo-v2/), which is a powerful vision-language foundation model trained on massive interleaved image-text data. Our goal is to enhance its cross-modal representation alignment and instruction-following ability through visual instruction tuning. 
-
-Key features of this codebase include:
+> This repository aims to provide an easy-to-use codebase and foundation models for (instruction-)finetuning of multi-modal LLMs. It is built upon [OpenFlamingo](https://github.com/mlfoundations/open_flamingo)🦩 codes and [OpenFlamingo-v2](https://laion.ai/blog/open-flamingo-v2/) models, which is a powerful vision-language foundation model trained on massive interleaved image-text data. Key features of this codebase include:
 
 - **Data**: We use a unified input-output structure to format fine-tuning data. Unlike OpenFlamingo, which only supports [webdataset](https://github.com/webdataset/webdataset), our codebase allows fine-tuning data to be stored locally as `.json` files. Multiple datasets can be mixed using dataset configurations with specified sampling ratios. We also provide scripts for converting existing datasets into the `.json` format.
 
@@ -38,10 +38,10 @@ conda env create -f environment.yml
 
 Note: please avoid using environment with pip installed `open-flamingo` package to avoid import conflicts.
 
-Additionally, as in our method LoRA adapter need to be inserted to the language model, a [PEFT](https://github.com/huggingface/peft) installation is required.
+Additionally, as in our method LoRA adapter need to be inserted to the language model, a [PEFT](https://github.com/huggingface/peft) installation is required. Tensorboard should also be installed for logging.
 
 ```bash
-pip install peft
+pip install peft, tensorboard
 ```
 
 The following packages are the dependencies of hosting API and gradio web demo:
