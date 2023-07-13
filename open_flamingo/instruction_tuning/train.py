@@ -509,9 +509,9 @@ def main():
         )
         save_checkpoint(ddp_model, optimizer, lr_scheduler, epoch, args)
     
-    # reinitialize dataset to sample different images
-    if epoch != (args.num_epochs-1):
-        instruction_dataset = get_data(args, image_processor, tokenizer, "instruction", epoch=epoch, logger=logger)
+        # reinitialize dataset to sample different images
+        if epoch != (args.num_epochs-1):
+            instruction_dataset = get_data(args, image_processor, tokenizer, "instruction", epoch=epoch, logger=logger)
 
     # save final checkpoint
     save_checkpoint(ddp_model, optimizer, lr_scheduler, epoch, args)
