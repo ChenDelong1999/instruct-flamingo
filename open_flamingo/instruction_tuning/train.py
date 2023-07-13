@@ -511,7 +511,7 @@ def main():
     
         # reinitialize dataset to sample different images
         if epoch != (args.num_epochs-1):
-            instruction_dataset = get_data(args, image_processor, tokenizer, "instruction", epoch=epoch, logger=logger)
+            instruction_dataset = get_data(args, image_processor, tokenizer, logger=logger, epoch=epoch)
 
     # save final checkpoint
     save_checkpoint(ddp_model, optimizer, lr_scheduler, epoch, args)
