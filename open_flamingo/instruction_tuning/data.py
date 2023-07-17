@@ -46,6 +46,10 @@ def get_prompt_instruction(instruction, instruction_prompt_templete):
 def extract_path_and_convert_token(input_data, img_dir):
     img_path_pattern = re.compile(r'<img_path>(.*?)<img_path>')
     img_paths = [os.path.join(img_dir, path) for path in img_path_pattern.findall(input_data)]
+    
+    # FIXME: temproary fix for reorganized cpfs
+    img_paths = [img_path.replace('research/multimodal_instruct_tuning', 'research-llm/instruc_data_en/multimodal_instruct_tuning') for img_path in img_paths]
+
     input_data_converted = img_path_pattern.sub('<image>', input_data)
     # input_data_converted = img_path_pattern.sub('<image><|endofchunk|>', input_data)
     return input_data_converted, img_paths
@@ -56,8 +60,6 @@ def load_and_process_images(img_paths, zero_image, image_processor, max_img=None
 
     for img_path in img_paths:
         try:
-            # FIXME: temproary fix for reorganized cpfs
-            img_path = img_path.replace('research/multimodal_instruct_tuning', 'research-llm/instruc_data_en/multimodal_instruct_tuning')
             img = Image.open(img_path)
             img = pad_image_to_square(img, is_train)
             images.append(image_processor(img).unsqueeze(0))
@@ -120,16 +122,16 @@ class InstructionDataset(Dataset):
 
         self.instruction_prompt_templete = args.instruction_prompt_templete
         self.num_samples = num_samples
-        self.epoch_num_samples = args.epoch_num_samples
-
-        assert self.epoch_num_samples <= self.num_samples
 
         self.max_length = max_length
         if self.mode == 'train':
             self.multiturn_augmentation = args.multiturn_augmentation
             self.max_img = args.max_img
+            self.epoch_num_samples = args.epoch_num_samples
+            assert self.epoch_num_samples <= self.num_samples
         elif self.mode == 'test':
             self.max_img = None
+            self.epoch_num_samples = -1
 
         self.samples = []
         total_samples_per_dataset = []
@@ -240,7 +242,7 @@ class InstructionDataset(Dataset):
                 logger.info(f"\tNum samples (total available): {total_samples_per_dataset[i]} ({total_samples_per_dataset[i]/total_samples*100:.2f}%)")
                 if self.num_samples > 0:
                     logger.info(f"\tNum samples (after sampling):  {sampled_counts[i]} ({normalized_weights[i]*100:.2f}%)")
-                if not args.skip_check_overlength:
+                if self.mode=='train' and not args.skip_check_overlength:
                     logger.info(f"\tNum over-length samples:       {over_length_counts[i] if i in over_length_counts.keys() else 0}")
 
         # Create and cache a zero-filled image for padding
@@ -316,8 +318,7 @@ class InstructionDataset(Dataset):
                 return_tensors="pt",
                 max_length=self.max_length,
             )
-            images = load_and_process_images(img_paths, self.zero_image, self.image_processor, self.max_img, is_train=False)
-            return images, text, instruction_str, sample
+            return img_paths, text, instruction_str, sample
 
 
     def multi_instrucions_tokenization(self, instructions, targets):

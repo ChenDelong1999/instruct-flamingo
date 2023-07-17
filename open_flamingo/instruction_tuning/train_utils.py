@@ -456,7 +456,7 @@ def resume_from_checkpoints(model, checkpoints, args=None, logger=None):
         checkpoint = torch.load(this_checkpoint, map_location="cpu")
 
         resume_from_epoch = 0
-        if args is not None and args.continue_training:
+        if args is not None and "epoch" in checkpoint.keys() and args.continue_training:
             resume_from_epoch = checkpoint["epoch"] + 1
             
         msd = checkpoint["model_state_dict"] if "model_state_dict" in checkpoint.keys() else checkpoint

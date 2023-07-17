@@ -135,7 +135,7 @@ class Inferencer:
         generated_texts = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
         results = []
         for text in generated_texts:
-            print(text)
+            # print(text)
             result = text.split(response_split)[-1].strip()
             results.append(result)
             

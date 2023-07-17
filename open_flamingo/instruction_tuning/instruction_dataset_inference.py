@@ -208,17 +208,11 @@ def main():
     dataset_results = defaultdict(list)
 
     for index, item in enumerate(tqdm(dataset)):            
-        images, text, instruction_str, sample = item
-        input_ids = text['input_ids']
-        attention_mask = text['attention_mask']
-        
-        images = images.cuda().half()
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda() 
+        img_paths, text, instruction_str, sample = item
 
         prediction, full_text = inferencer(
-            prompt=text,
-            images=images,
+            prompt=instruction_str,
+            images=img_paths,
             max_new_token=args.max_new_token,
             num_beams=args.num_beams,
             temperature=args.temperature,
@@ -234,15 +228,16 @@ def main():
         instruction_str = instruction_str.replace('<|endofchunk|>', '')
         dataset_results[dataset_name].append({
             "input": add_image_dir(sample['instruction']+sample['input'], sample['img_dir']),
-            "output": prediction,
+            "output": prediction[0],
             "target": sample['output'],
             "prompt": instruction_str,
         })
         dataset_names.append(dataset_name)
         print('-'*64)
         print(f'[dataset]:   {dataset_name} ({sample["dataset_idx"] + 1}/{len(dataset.configs)})')
+        print(f'[images]:    {img_paths}')
         print(f'[prompt]:    {instruction_str}')
-        print(f'\n*** PREDICTION ***\n{prediction}')
+        print(f'\n*** PREDICTION ***\n{prediction[0]}')
         print(f'\n*** TARGET ***\n{sample["output"]}')
 
         if index % 10 == 0:
