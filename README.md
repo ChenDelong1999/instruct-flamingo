@@ -20,6 +20,8 @@
 - **Inference**: We have wrapped the model into an `inferencer` and provided code for hosting a local API, hosting a Gradio web demo, and performing inference on instruction datasets.
 
 
+> *This is a ongoing project. We are working on verifying codes and training better instruction foundation models.*
+
 ## Getting Started🚩
 
 ### 1. Install Dependencies
@@ -60,7 +62,43 @@ pip install gradio, uvicorn, fastapi, pydantic
   - [MPT-7B](https://huggingface.co/anas-awadalla/mpt-7b): base language model for OpenFlamingo9B-v2, with commercially useable license.
 - **Visual Instruction Foundation Models**: massively finetuned model could provide a better starting point for domain specific fine-tuining.
   - [Clever Flamingo](https://huggingface.co/chendelong/clever_flamingo): from OpenFlamingo9B-v1, see [[paper](https://arxiv.org/abs/2307.01003), [github](https://github.com/ChenDelong1999/polite_flamingo)].
-  <!-- - [Clever Flamingo v2-preview](https://huggingface.co/chendelong/clever_flamingo_v2/blob/main/clever_flamingo_v2_preview.pt): from OpenFlamingo9B-v2, visual-instruction-tuned with more data (5M+ multi-modal/text-only instructions) using maximum 16 image per sample and 2k token context, training perceiver and LoRA (rank of 128) on LM and XATTN. This is a early stopped model (1M sample seen), but has already matched Clever Flamingo-v1 on image paragraph captioning dataset. It is uploaded only for checking code correctness. -->
+  - [Clever Flamingo v2-preview](https://huggingface.co/chendelong/clever_flamingo_v2/tree/main): from OpenFlamingo9B-v2 (9B & 3B), visual-instruction-tuned with more data (7.5M+ multi-modal/text-only instructions, see dataset list below) using maximum 16 image per sample and 2k token context, training perceiver and LoRA (rank of 128) on LM and XATTN ([this config](open_flamingo/instruction_tuning/tuning_config/lora[lm+xqttn]+perceiver.json)). This is a early stopped model (2.5M sample seen, where each sample is a 2k token context dialoge composed by multi-turn augmentation). The following is a list of used instruction data. It is a early-stopped preview version. 
+    <details>
+    <summary>Instruction Dataset List for Clever Flamingo v2 Training</summary>
+
+    | Index | Dataset Name | #Samples | Sampling Ratio |
+    | ---- | ------------------- | ------------ | -------------- |
+    |  | **Multi-modal Instructions** |  |  |  |
+    | 1 | llava-complex-reasoning-77k | 76643 | 2.17% |
+    | 2 | llava-conversation-58k | 256870 | 7.22% |
+    | 3 | llava-detail-23k | 23240 | 1.30% |
+    | 4 | llavar_20k | 43186 | 0.56% |
+    | 5 | LRV | 98670 | 2.76% |
+    | 6 | MIMIC-IT-LACONV_instructions | 256870 | 1.64% |
+    | 7 | MIMIC-IT-LACR_T2T_instructions | 76643 | 2.17% |
+    | 8 | MIMIC-IT-LADD_instructions | 23240 | 0.65% |
+    | 9 | MIMIC-IT-VST_instructions | 31714 | 0.90% |
+    | 10 | MIMIC-IT-SN_instructions | 6640 | 0.20% |
+    | 11 | MIMIC-IT-TVC_instructions | 137607 | 0.37% |
+    | 12 | PF-1M Filtered by reward score | 800000 | 16.93% |
+    | 13 | LAMM | 472009 | 5.25% |
+    | 14 | VideoChat | 37941 | 0.31% |
+    | 15 | img2paragraph | 14579 | 0.79% |
+    | 16 | coco_2017_captions | 591753 | 3.33% |
+    | 17 | textcaps | 548825 | 3.07% |
+    | 18 | RET-3 | 13717 | 0.37% |
+    | 19 | LevirCCcaptions | 6815 | 0.20% |
+    | 20 | artemis | 451440 | 1.13% |
+    | 21 | nsfw_rejection | 2444 | 0.28% |
+    |  | **Text-only Instructions** |  |  |
+    | 22 | alpaca_cot_merged | 3149241 | 33.85% |
+    | 23 | WizardLM_evol_instruct_V2_143k | 143000 | 8.46% |
+    | 24 | UltraChat | 157457 | 4.43% |
+    | 25 | oasst1 | 5256 | 0.28% |
+    | 26 | sharegpt | 45464 | 1.27% |
+    | 27 | xiaobing_hard_coded | 1188 | 0.11% |
+
+    </details>
   - Clever Flamingo v2: comming soon...
 
 ## Prepare Fine-tuning Dataset(s)📜
@@ -173,7 +211,7 @@ The `--resume_from_checkpoint` specify the pretrained weights to load. Multiple 
 
 ## Inference🎈
 
-### Batch inference on dataset(s)
+### Running Predictions Iterating Over Dataset(s)
 
 The following script is an example of model inference through multiple datasets.
 
