@@ -6,6 +6,8 @@ eval "$(conda shell.bash hook)"
 conda activate instruct_flamingo
 which python
 
+# --checkpoint_paths and --instruction_path need to be modified
+
 CUDA_VISIBLE_DEVICES='1' python open_flamingo/instruction_tuning/instruction_dataset_inference.py \
     --lm_path "/cpfs/user/chendelong/cache/mpt-7b" \
     --vision_encoder_path "ViT-L-14-336" \
