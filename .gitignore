@@ -6,6 +6,7 @@ serving/*
 !serving/images/*
 wandb/*
 
+!open_flamingo/instruction_tuning/tuning_config/*
 instruction_dataset/alpaca_cot_to_instruction.py
 instruction_dataset/mimic_it_to_instruction.ipynb
 instruction_dataset/pf1m_to_instruction.py

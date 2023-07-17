@@ -1,0 +1,9 @@
+{
+    "lora": false,
+    "from_pretrained": false,
+    "lora_target_modules": ["Wqkv", "out_proj", "up_proj", "down_proj","q_proj", "k_proj", "v_proj", "o_proj", "to_q", "to_kv", "to_out", "ff.1", "ff.3"],
+    "lora_r": 64,
+    "lora_alpha": 64,
+    "lora_dropout": 0.0,
+    "unfrozen": ["perceiver"]
+}

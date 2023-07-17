@@ -1,0 +1,5 @@
+{
+    "lora": true,
+    "from_pretrained":"/cpfs/user/chendelong/.cache/guanaco-7b",
+    "unfrozen": []
+}
