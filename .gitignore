@@ -1,6 +1,6 @@
 *.pt
 *.json
-
+core.*
 runs/*
 serving/*
 !serving/images/*
