@@ -227,7 +227,7 @@ def main():
         dataset_name = dataset.configs[sample['dataset_idx']]['dataset_name']
         instruction_str = instruction_str.replace('<|endofchunk|>', '')
         dataset_results[dataset_name].append({
-            "input": add_image_dir(sample['instruction']+sample['input'], sample['img_dir']),
+            "input": add_image_dir(sample['input'], sample['img_dir']),
             "output": prediction[0],
             "target": sample['output'],
             "prompt": instruction_str,
