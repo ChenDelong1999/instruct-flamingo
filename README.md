@@ -246,11 +246,14 @@ This API can be called by the following code:
 
 ```python
 import json, request
+def get_prompt(instruction):
+    return f'### Human: {instruction}\n### Assistant: '
 
-url = '0.0.0.0:1234'
+url = '0.0.0.0:1234/clever_flamingo'
 content_lst = {
-    'prompt': '',     # add your prompt here,
-    'imgpaths': [],   # add your images here,
+    # remenber to add '<image>' to your instruction to indecate the location of image(s)
+    'prompt': f'### Human: {<YOUR INSTRUCTION>}\n### Assistant: ',     
+    'imgpaths': ['<YOUR IMAGE 1>', '<YOUR IMAGE 2>'],
     'args':{
         'max_new_token':1024,
         'num_beams':1,
