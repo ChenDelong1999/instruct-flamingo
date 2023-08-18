@@ -27,15 +27,19 @@ Clever Flamingo v2 is an instruction-following multi-modal LLM fine-tuned from [
 [CAMEL](https://github.com/camel-ai/camel), 
 [Alpaca-CoT](https://github.com/PhoebusSi/Alpaca-CoT), 
 and many more, leading to so far the largest scale experiment on visual instruction tuning to our best knowledge.
+
 ![](docs/num_sample_bar.png)
 
 - **Balanced Visual-Textual Instruction Tuning**. Current works on visual instruction tuning often pay less attention on the usage of textual instruction data, resulting in limited instruction-following ability -- another instance of *"[Multi-modal Alignmnet Tax](https://arxiv.org/abs/2307.01003)"*. For Clever Flamingo v2, we sample visual and textual instructions with a strict 1:1 ratio, such that it enjoys both accurate visual understanding and strong instruction-following abilities.
+
 ![](docs/dataset_pie.png)
 
 - **Long Context and LangChain**. Clever Flamingo use a context window of 2k tokens during training, which enable it to take full advantages of high quality instruction datasets. Although it is only based on a 7B LLM, Clever Flamingo v2 have demonstrated strong instruction-following, long response generation, and chain-of-thought capablities. We integrate it into the [LangChain](https://github.com/langchain-ai/langchain) framework, enabling easy use of [on-the-shelf chains](https://python.langchain.com/docs/use_cases). We further implemented several chains for multi-modal scenario, such as [CoT-SC](https://arxiv.org/abs/2203.11171) and Caption-Self-Verification Chain, etc.
+
 ![](docs/cot.png)
 
 - **From Single Image to Multi-images, Region Crops, and Videos**. As Flamingo models take albitarily interleaved image-text sequence as input, our instruction training set contains various types of image-text combinations, and accordingly, Clver Flamingo v2 acquires the ability of multi-image comparision, reasoning, region understanding (based on cropped boxes), video understanding (based on sampled frames). During training, it can access a maximum of 16 images per context window, in comparision with 5 in OpenFlamingo pretraining.
+
 ![](docs/interleaving_img_text.png)
 
 <!-- - **OCR Integrations**. We insert OCR result (from [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)) into instructions during training. -->
