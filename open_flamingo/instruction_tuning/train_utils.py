@@ -145,12 +145,13 @@ def train_one_epoch(
             # if loss is nan, skip this batch
             # this hack of skipping the batch is not FSDP-compatible
             if torch.isnan(loss):
-                print("loss is nan, skipping this batch")
+                # print("loss is nan, skipping this batch")
                 print("input_ids: ", tokenizer.batch_decode(input_ids))
                 print("labels: ", labels)
                 print("images: ", images)
-                optimizer.zero_grad(set_to_none=True)
-                continue
+                # optimizer.zero_grad(set_to_none=True)
+                # continue
+                print("loss is nan")
 
         divided_loss = loss / args.gradient_accumulation_steps
         divided_loss.backward()
@@ -193,7 +194,7 @@ def train_one_epoch(
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # step optimizer and log
-        if (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
+        if num_steps==0 or (((num_steps + 1) % args.gradient_accumulation_steps) == 0) or (
             num_steps == num_batches_per_epoch - 1
         ):
             optimizer.step()
