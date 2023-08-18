@@ -83,7 +83,7 @@ class Inferencer:
             images = [images]
 
         # Convert prompts to input tensors
-        prompt = self.tokenizer(prompt, return_tensors="pt")
+        prompt = self.tokenizer(prompt, return_tensors="pt", padding=True)
 
         # Load and preprocess images
         processed_images = []
