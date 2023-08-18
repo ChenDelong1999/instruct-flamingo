@@ -1,17 +1,20 @@
 *.pt
 *.json
 core.*
+
 runs/*
 serving/*
 !serving/images/*
 wandb/*
+inference/region_crops
+inference/legacy
 
 !open_flamingo/instruction_tuning/tuning_config/*
 instruction_dataset/alpaca_cot_to_instruction.py
 instruction_dataset/mimic_it_to_instruction.ipynb
 instruction_dataset/pf1m_to_instruction.py
 
-predictions_validation/*
+predictions_validation*/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
