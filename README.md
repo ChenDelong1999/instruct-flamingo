@@ -9,40 +9,33 @@
 </div>
 
 ## News
-- **2023/08/18**: We have released the **Clever Flamingo v2** model! It was trained on a collection of 20 million instruction samples, sourced from 100+ visual and textual datasets! The web demo at [clever_flamingo.xiaoice.com](http://clever_flamingo.xiaoice.com/) have also been upgraded to v2 version, few free to chat with Clever Flamingo v2!
+- **2023/08/18**: We have released the **Clever Flamingo v2** model! It was trained on a collection of 20 million instruction samples sourced from 100+ visual and textual datasets. The web demo at [clever_flamingo.xiaoice.com](http://clever_flamingo.xiaoice.com/) has been upgraded to the v2 version. Feel free to chat with Clever Flamingo v2!
 
 
 ## Clever Flamingo v2
 
-Clever Flamingo v2 is an instruction-following multi-modal LLM fine-tuned from [OpenFlamingo-v2 (MPT-7B)](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b). It takes albitarily interleaved image-text instructions as input, and generates text responses. It is an upgraded version of the [Clever Flamingo v1](https://github.com/ChenDelong1999/polite-flamingo) model. Key features of this model are listed as follows:
+Clever Flamingo v2 is an instruction-following multi-modal LLM fine-tuned from [OpenFlamingo-v2 (MPT-7B)](https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b). It accepts arbitrarily interleaved image-text instructions as input and generates text responses. It is an upgraded version of the [Clever Flamingo v1](https://github.com/ChenDelong1999/polite-flamingo) model. The key features of Clever Flamingo v2 include:
 
-**Large Instruction Corpus**. The "<Image(s) + Text $\rightarrow$ Text>" modelling of Flamingo enable us to unify large amount of datasets (+100) into standard input-output format, including 
-[PF-1M](https://github.com/ChenDelong1999/polite-flamingo#-the-pf-1m-dataset), 
-[MIMIC-IT](https://github.com/Luodian/Otter/blob/main/mimic-it/README.md), 
-[SVIT](https://github.com/BAAI-DCAI/Visual-Instruction-Tuning), 
-[LAMM](https://github.com/OpenLAMM/LAMM), 
-[FunQA](https://github.com/Jingkang50/FunQA), 
-[OpenORCA](https://huggingface.co/datasets/Open-Orca/OpenOrca), 
-[WizardLM-Evol](https://github.com/nlpxucan/WizardLM), 
-[CAMEL](https://github.com/camel-ai/camel), 
-[Alpaca-CoT](https://github.com/PhoebusSi/Alpaca-CoT), 
-and many more, leading to so far the largest scale experiment on visual instruction tuning to our best knowledge. The training takes one week on a 8 $\times$ A100 (80G) machine.
+**Large Instruction Corpus**: The Flamingo model's "<Image(s) + Text $\rightarrow$ Text>" approach allows us to unify a large amount of datasets (+100) into a standard input-output format. These datasets include [PF-1M](https://github.com/ChenDelong1999/polite-flamingo#-the-pf-1m-dataset), [MIMIC-IT](https://github.com/Luodian/Otter/blob/main/mimic-it/README.md), [SVIT](https://github.com/BAAI-DCAI/Visual-Instruction-Tuning), [LAMM](https://github.com/OpenLAMM/LAMM), [FunQA](https://github.com/Jingkang50/FunQA), [OpenORCA](https://huggingface.co/datasets/Open-Orca/OpenOrca), [WizardLM-Evol](https://github.com/nlpxucan/WizardLM), [CAMEL](https://github.com/camel-ai/camel), [Alpaca-CoT](https://github.com/PhoebusSi/Alpaca-CoT), and many more. This leads to the largest scale experiment on visual instruction tuning to our best knowledge. Its training process takes one week on an 8 $\times$ A100 (80G) machine.
 
-![](docs/num_sample_bar.png)
+![Number of Samples](docs/num_sample_bar.png)
 
-**Balanced Visual-Textual Instruction Tuning**. Current works on visual instruction tuning often pay less attention on the usage of textual instruction data, resulting in limited instruction-following ability -- another instance of *"[Multi-modal Alignmnet Tax](https://arxiv.org/abs/2307.01003)"*. For Clever Flamingo v2, we sample visual and textual instructions with a strict 1:1 ratio, such that it enjoys both accurate visual understanding and strong instruction-following abilities.
+**Balanced Visual-Textual Instruction Tuning**: Unlike previous approaches to visual instruction tuning that sometimes pay less attention on the usage of textual instruction data, Clever Flamingo v2 maintains a strict 1:1 ratio when sampling visual and textual instructions. This ensures accurate visual understanding and strong instruction-following abilities.
 
-![](docs/dataset_pie.png)
+![Dataset Ratio](docs/dataset_pie.png)
 
-**Long Context and LangChain**. Clever Flamingo use a context window of 2k tokens during training, which enable it to take full advantages of high quality instruction datasets. Although it is only based on a 7B LLM, Clever Flamingo v2 have demonstrated strong instruction-following, long response generation, and chain-of-thought capablities. We integrate it into the [LangChain](https://github.com/langchain-ai/langchain) framework, enabling easy use of [on-the-shelf chains](https://python.langchain.com/docs/use_cases). We further implemented several chains for multi-modal scenario, such as [CoT-SC](https://arxiv.org/abs/2203.11171) and Caption-Self-Verification Chain, etc.
+**Long Context and LangChain**: Clever Flamingo utilizes a context window of 2k tokens during training, enabling it to fully leverage high-quality instruction datasets. Despite being based on a 7B LLM, Clever Flamingo v2 demonstrates strong instruction-following capabilities, long response generation, and chain-of-thought capabilities. It is integrated into the [LangChain](https://github.com/langchain-ai/langchain) framework, allowing for easy use of [pre-built chains](https://python.langchain.com/docs/use_cases). Additionally, several chains for multi-modal scenarios, such as [CoT-SC](https://arxiv.org/abs/2203.11171) and Caption-Self-Verification Chain, have been implemented. Please see [langchain.ipynb](inference/langchain.ipynb) for an example.
 
-![](docs/cot.png)
+![LangChain](docs/cot.png)
 
-**From Single Image to Multi-images, Region Crops, and Videos**. As Flamingo models take albitarily interleaved image-text sequence as input, our instruction training set contains various types of image-text combinations, and accordingly, Clver Flamingo v2 acquires the ability of multi-image comparision, reasoning, region understanding (based on cropped boxes), video understanding (based on sampled frames). During training, it can access a maximum of 16 images per context window, in comparision with 5 in OpenFlamingo pretraining.
+**From Single Image to Multi-images, Region Crops, and Videos**: Given that Flamingo models accept arbitrarily interleaved image-text sequences as input, Clever Flamingo v2 has been trained on a diverse instruction dataset that contains various image-text combinations. We integrate tasks involving multi-image comparison, reasoning, region understanding (based on cropped boxes), and video understanding (based on sampled frames). During training, it can process a maximum of 16 images per context window, compared to 5 in OpenFlamingo pretraining.
 
-![](docs/interleaving_img_text.png)
+![Image-Text Interleaving](docs/interleaving_img_text.png)
 
-<!-- - **OCR Integrations**. We insert OCR result (from [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)) into instructions during training. -->
+**OCR Integrations**: Clever Flamingo v2 incorporates OCR results (from [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)) into instructions of OCR-related datasets (TextCaps, InfographicQA, VisualMRC, OCR-VQA, etc.) during training. OCR results with similar vertical pixel coordinates are merged in the same line and concatenated by `'\t'`, preserving layout information. The OCR process is efficient, taking less than 0.2 seconds to process each image.
+
+![OCR](docs/ocr.png)
+
 
 <!-- - **Easy and Efficient Fine-tuning**.  -->
 
